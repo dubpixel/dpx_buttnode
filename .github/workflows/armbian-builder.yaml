@@ -301,16 +301,23 @@ jobs:
           CUSTOM="${{ inputs.custom-board }}"
           SELECTED="${{ inputs.armbian-board }}"
           BOARD="${CUSTOM:-$SELECTED}"
-          BRANCH=$(echo "${{ github.ref_name }}" | sed 's|/|-|g')
+          RAW_BRANCH="${{ github.ref_name }}"
+          BRANCH_SLUG=$(echo "$RAW_BRANCH" | sed 's|/|-|g' | sed 's|[^a-zA-Z0-9._-]|-|g')
           COMMIT=$(echo "${{ github.sha }}" | cut -c1-7)
-          ARTIFACT_NAME="${BOARD}-dpx-buttnode-${BUILD_VERSION}-${BRANCH}-${COMMIT}"
+          # main: no branch slug; other branches: append slug so artifacts are self-identifying
+          if [ "$RAW_BRANCH" = "main" ]; then
+            ARTIFACT_NAME="${BOARD}-dpx-buttnode-${BUILD_VERSION}-${COMMIT}"
+          else
+            ARTIFACT_NAME="${BOARD}-dpx-buttnode-${BUILD_VERSION}-${BRANCH_SLUG}-${COMMIT}"
+          fi
           echo "buttons-version=${VERSION}" >> "$GITHUB_OUTPUT"
           echo "artifact-name=${ARTIFACT_NAME}" >> "$GITHUB_OUTPUT"
           echo "board=${BOARD}" >> "$GITHUB_OUTPUT"
+          echo "branch-slug=${BRANCH_SLUG}" >> "$GITHUB_OUTPUT"
           echo "Board   : ${BOARD}"
           echo "Version : ${VERSION}"
           echo "Build   : ${BUILD_VERSION}"
-          echo "Branch  : ${BRANCH}"
+          echo "Branch  : ${RAW_BRANCH} → ${BRANCH_SLUG}"
           echo "Commit  : ${COMMIT}"
           echo "Artifact: ${ARTIFACT_NAME}"
 
@@ -372,9 +379,14 @@ jobs:
           CUSTOM="${{ inputs.custom-board }}"
           SELECTED="${{ inputs.armbian-board }}"
           BOARD="${CUSTOM:-$SELECTED}"
-          BRANCH=$(echo "${{ github.ref_name }}" | sed 's|/|-|g')
+          RAW_BRANCH="${{ github.ref_name }}"
+          BRANCH_SLUG=$(echo "$RAW_BRANCH" | sed 's|/|-|g' | sed 's|[^a-zA-Z0-9._-]|-|g')
           COMMIT=$(echo "${{ github.sha }}" | cut -c1-7)
-          FINAL_NAME="${BOARD}-dpx-buttnode-${BUILD_VERSION}-${BRANCH}-${COMMIT}.img"
+          if [ "$RAW_BRANCH" = "main" ]; then
+            FINAL_NAME="${BOARD}-dpx-buttnode-${BUILD_VERSION}-${COMMIT}.img"
+          else
+            FINAL_NAME="${BOARD}-dpx-buttnode-${BUILD_VERSION}-${BRANCH_SLUG}-${COMMIT}.img"
+          fi
 
           LOOP=$(sudo losetup -fP --show "$IMG")
           ROOT_PART="${LOOP}p1"
