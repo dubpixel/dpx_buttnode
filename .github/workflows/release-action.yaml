@@ -63,27 +63,27 @@ jobs:
           FORCE: ${{ github.event.inputs.force || 'false' }}
         run: |
           MIRROR_VERSION="${{ steps.mirror.outputs.buttons-version }}"
-          BUILD_VERSION=$(cat VERSION 2>/dev/null || echo "unknown")
-          EXPECTED_TAG="dpx-buttnode-${MIRROR_VERSION}-build${BUILD_VERSION}"
 
-          LATEST_TAG=$(gh release list \
+          # Check if any release already exists for this Buttons version.
+          # NOTE: no repo checkout in this job, so we cannot read the VERSION
+          # file here. Match by Buttons-version prefix instead — if a
+          # dpx-buttnode-<version>-build* tag exists at all, we're done.
+          MATCHING_TAG=$(gh release list \
             --repo "${{ github.repository }}" \
-            --exclude-pre-releases \
             --exclude-drafts \
-            --limit 20 \
+            --limit 30 \
             --json tagName \
-            --jq '[.[].tagName | select(startswith("dpx-buttnode-"))] | first' \
+            --jq "[.[].tagName | select(startswith(\"dpx-buttnode-${MIRROR_VERSION}-build\"))] | first" \
             2>/dev/null || echo "")
 
           echo "Mirror version : ${MIRROR_VERSION}"
-          echo "Latest release : ${LATEST_TAG}"
-          echo "Expected tag   : ${EXPECTED_TAG}"
+          echo "Matching tag   : ${MATCHING_TAG:-none}"
 
           if [[ "$FORCE" == "true" ]]; then
             echo "Force flag set — building regardless."
             echo "should-build=true" >> "$GITHUB_OUTPUT"
-          elif [[ "$LATEST_TAG" == "$EXPECTED_TAG" ]]; then
-            echo "Already released. Nothing to do."
+          elif [[ -n "$MATCHING_TAG" ]]; then
+            echo "Already released as ${MATCHING_TAG}. Nothing to do."
             echo "should-build=false" >> "$GITHUB_OUTPUT"
           else
             echo "New version detected — triggering build."
